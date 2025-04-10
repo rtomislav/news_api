@@ -37,8 +37,9 @@ An **ASP.NET Core Web API** project that manages **Authors** and **News Articles
 
 ## 📌 TODO
 
-[ ] Implement image upload for articles
-
+- [ ] Implement image upload for articles
+- [ ] Add docker support
+- [ ] Add env configuration, keyvalut, insights etc...
 - [ ] Add logic for saving content from WYSIWYG editor
 - [ ] Migrate all controllers to **Minimal API endpoints** using `.MapGroup` and static endpoint classes
 - [ ] Use **TypedResults** and `Results<T1, T2>` for consistent and type-safe API responses
