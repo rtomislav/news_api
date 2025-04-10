@@ -1,8 +1,8 @@
-﻿using API.Models;
+﻿using API.Endpoints;
+using API.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Swashbuckle.AspNetCore.Filters;
-using API.Controllers;
 
 var builder = WebApplication.CreateBuilder(args);
 

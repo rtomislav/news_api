@@ -1,75 +1,107 @@
-﻿using Microsoft.EntityFrameworkCore;
-using API.Models;
-using Microsoft.AspNetCore.Http.HttpResults;
-using Microsoft.AspNetCore.OpenApi;
+﻿using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-namespace API.Controllers;
+using Microsoft.EntityFrameworkCore;
+using API.Models;
+
+namespace API.Endpoints;
 
 public static class AuthorEndpoints
 {
     public static void MapAuthorEndpoints(this IEndpointRouteBuilder routes)
     {
+        var group = routes.MapGroup("/api/authors")
+            .WithTags("Authors")
+            .RequireAuthorization();
 
-        var group = routes.MapGroup("/api/Author").WithTags(nameof(Author));
-        group.RequireAuthorization();
+        // Get current user ID
+        group.MapGet("/current-user-id", GetCurrentUserId)
+            .WithName("GetCurrentUserId")
+            .WithOpenApi();
 
-        group.MapGet("/GetCurrentUserId", async (HttpContext httpContext, [FromServices] UserManager<IdentityUser> userManager) =>
-        {
-            var user = await userManager.GetUserAsync(httpContext.User);
+        // Get all authors
+        group.MapGet("/", GetAllAuthors)
+            .WithName("GetAllAuthors")
+            .WithOpenApi();
 
-            return user == null ? Results.NotFound() : Results.Ok(user.Id);
-        });
+        // Get author by ID
+        group.MapGet("/{id}", GetAuthorById)
+            .WithName("GetAuthorById")
+            .WithOpenApi();
 
-        group.MapGet("/", async (AppDBContext db) =>
-        {
-            return await db.Authors.ToListAsync();
-        })
-        .WithName("GetAllAuthors")
-        .WithOpenApi();
+        // Update author
+        group.MapPut("/{id}", UpdateAuthor)
+            .WithName("UpdateAuthor")
+            .WithOpenApi();
 
-        group.MapGet("/{id}", async Task<Results<Ok<Author>, NotFound>> (string idauthors, AppDBContext db) =>
-        {
-            return await db.Authors.AsNoTracking()
-                .FirstOrDefaultAsync(model => model.IdAuthors == idauthors)
-                is Author model
-                    ? TypedResults.Ok(model)
-                    : TypedResults.NotFound();
-        })
-        .WithName("GetAuthorById")
-        .WithOpenApi();
+        // Create author
+        group.MapPost("/", CreateAuthor)
+            .WithName("CreateAuthor")
+            .WithOpenApi();
 
-        group.MapPut("/{id}", async Task<Results<Ok, NotFound>> (string idauthors, Author author, AppDBContext db) =>
-        {
-            var affected = await db.Authors
-                .Where(model => model.IdAuthors == idauthors)
-                .ExecuteUpdateAsync(setters => setters
-                    .SetProperty(m => m.IdAuthors, author.IdAuthors)
-                    .SetProperty(m => m.DisplayName, author.DisplayName)
-                    .SetProperty(m => m.Bio, author.Bio)
-                    );
-            return affected == 1 ? TypedResults.Ok() : TypedResults.NotFound();
-        })
-        .WithName("UpdateAuthor")
-        .WithOpenApi();
+        // Delete author
+        group.MapDelete("/{id}", DeleteAuthor)
+            .WithName("DeleteAuthor")
+            .WithOpenApi();
+    }
 
-        group.MapPost("/", async (Author author, AppDBContext db) =>
-        {
-            db.Authors.Add(author);
-            await db.SaveChangesAsync();
-            return TypedResults.Created($"/api/Author/{author.IdAuthors}", author);
-        })
-        .WithName("CreateAuthor")
-        .WithOpenApi();
+    private static async Task<IResult> GetCurrentUserId(
+        HttpContext httpContext,
+        [FromServices] UserManager<IdentityUser> userManager)
+    {
+        var user = await userManager.GetUserAsync(httpContext.User);
+        return user == null ? Results.NotFound() : Results.Ok(user.Id);
+    }
 
-        group.MapDelete("/{id}", async Task<Results<Ok, NotFound>> (string idauthors, AppDBContext db) =>
-        {
-            var affected = await db.Authors
-                .Where(model => model.IdAuthors == idauthors)
-                .ExecuteDeleteAsync();
-            return affected == 1 ? TypedResults.Ok() : TypedResults.NotFound();
-        })
-        .WithName("DeleteAuthor")
-        .WithOpenApi();
+    private static async Task<IResult> GetAllAuthors(AppDBContext db)
+    {
+        var authors = await db.Authors.ToListAsync();
+        return Results.Ok(authors);
+    }
+
+    private static async Task<Results<Ok<Author>, NotFound>> GetAuthorById(
+        string id,
+        AppDBContext db)
+    {
+        return await db.Authors.AsNoTracking()
+            .FirstOrDefaultAsync(model => model.IdAuthors == id)
+            is Author model
+                ? TypedResults.Ok(model)
+                : TypedResults.NotFound();
+    }
+
+    private static async Task<Results<Ok, NotFound>> UpdateAuthor(
+        string id,
+        Author author,
+        AppDBContext db)
+    {
+        var affected = await db.Authors
+            .Where(model => model.IdAuthors == id)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(m => m.DisplayName, author.DisplayName)
+                .SetProperty(m => m.Bio, author.Bio)
+            );
+
+        return affected == 1 ? TypedResults.Ok() : TypedResults.NotFound();
+    }
+
+    private static async Task<IResult> CreateAuthor(
+        Author author,
+        AppDBContext db)
+    {
+        db.Authors.Add(author);
+        await db.SaveChangesAsync();
+        return TypedResults.Created($"/api/authors/{author.IdAuthors}", author);
+    }
+
+    private static async Task<Results<Ok, NotFound>> DeleteAuthor(
+        string id,
+        AppDBContext db)
+    {
+        var affected = await db.Authors
+            .Where(model => model.IdAuthors == id)
+            .ExecuteDeleteAsync();
+
+        return affected == 1 ? TypedResults.Ok() : TypedResults.NotFound();
     }
 }
